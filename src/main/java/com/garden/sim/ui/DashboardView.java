@@ -395,6 +395,13 @@ public class DashboardView extends BorderPane {
             triggerPestControl();
         });
         
+        // FYI note about probabilistic nature
+        Label pestControlNote = new Label("FYI: Treatment is probabilistic - efficacy 50-99% has 60% cure chance, 100% efficacy is guaranteed.");
+        pestControlNote.setFont(Font.font(FONT_ARIAL, 9));
+        pestControlNote.setTextFill(Color.GRAY);
+        pestControlNote.setWrapText(true);
+        pestControlNote.setMaxWidth(Double.MAX_VALUE);
+        
         leftPanel.getChildren().addAll(
             panelTitle,
             new Separator(),
@@ -406,7 +413,7 @@ public class DashboardView extends BorderPane {
             new Separator(),
             parasiteLabel, parasiteButtonContainer,
             new Separator(),
-            actionLabel, harvestAllButton, pestControlButton
+            actionLabel, harvestAllButton, pestControlButton, pestControlNote
         );
         
         return leftPanel;
