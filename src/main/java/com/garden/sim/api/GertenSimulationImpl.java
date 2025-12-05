@@ -10,8 +10,15 @@ import java.util.concurrent.*;
  * Implementation of the Garden Simulation API.
  * Manages the garden, clock, and all automated subsystems.
  * All methods are wrapped in exception handling to ensure the system never crashes.
+ * 
+ * <p>This class is thread-safe and provides proper resource management.
+ * Call {@link #shutdown()} when done to clean up resources.
  */
 public final class GertenSimulationImpl implements GertenSimulationAPI {
+    private static final int RANDOM_TEMP_MIN = 50;
+    private static final int RANDOM_TEMP_MAX = 80;
+    private static final int RANDOM_TEMP_RANGE = RANDOM_TEMP_MAX - RANDOM_TEMP_MIN + 1;
+    
     private final Garden garden;
     private final EventBus bus;
     private final Clock clock;
@@ -31,9 +38,9 @@ public final class GertenSimulationImpl implements GertenSimulationAPI {
         
         // Subscribe to day ticks to generate random temperature
         bus.subscribe(EventBus.Topic.DAY_TICK, e -> {
-            // Generate random temperature between 50-80°F each day
+            // Generate random temperature between RANDOM_TEMP_MIN-RANDOM_TEMP_MAX°F each day
             java.util.Random random = new java.util.Random();
-            int randomTemp = 50 + random.nextInt(31); // 50 + (0-30) = 50-80
+            int randomTemp = RANDOM_TEMP_MIN + random.nextInt(RANDOM_TEMP_RANGE);
             temperature(randomTemp); // This will go through heating system
         });
     }
@@ -108,8 +115,13 @@ public final class GertenSimulationImpl implements GertenSimulationAPI {
         return safe(() -> garden.getCoins(), 0);
     }
     
+    private static final int DEFAULT_SEED_PRICE = 10;
+    
     @Override
     public int getSeedPrice(String species) {
+        if (species == null || species.trim().isEmpty()) {
+            return DEFAULT_SEED_PRICE;
+        }
         // Seed prices for all 10 plant types
         return switch(species) {
             case "Tomato" -> 10;
@@ -122,7 +134,7 @@ public final class GertenSimulationImpl implements GertenSimulationAPI {
             case "Strawberry" -> 12;
             case "Sunflower" -> 9;
             case "Marigold" -> 5;
-            default -> 10;
+            default -> DEFAULT_SEED_PRICE;
         };
     }
 
@@ -135,10 +147,27 @@ public final class GertenSimulationImpl implements GertenSimulationAPI {
             Logger.log(Logger.LogLevel.INFO, "Manual pest control triggered by user");
         });
     }
+    
+    /**
+     * Shuts down the simulation and releases all resources.
+     * Should be called when the simulation is no longer needed.
+     */
+    public void shutdown() {
+        safe(() -> {
+            svc.shutdown();
+            clock.stop();
+            Logger.log(Logger.LogLevel.INFO, "Simulation shutdown completed");
+        });
+    }
 
     private void safe(Runnable r) {
-        try { r.run(); } catch (Throwable t) { 
+        try { 
+            r.run(); 
+        } catch (Throwable t) { 
             Logger.log(Logger.LogLevel.ERROR, "Unhandled exception: " + t.getMessage());
+            if (t.getCause() != null) {
+                Logger.log(Logger.LogLevel.ERROR, "Caused by: " + t.getCause().getMessage());
+            }
         }
     }
     
@@ -147,6 +176,9 @@ public final class GertenSimulationImpl implements GertenSimulationAPI {
             return supplier.get(); 
         } catch (Throwable t) { 
             Logger.log(Logger.LogLevel.ERROR, "Unhandled exception: " + t.getMessage());
+            if (t.getCause() != null) {
+                Logger.log(Logger.LogLevel.ERROR, "Caused by: " + t.getCause().getMessage());
+            }
             return defaultValue;
         }
     }

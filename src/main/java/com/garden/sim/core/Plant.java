@@ -6,6 +6,10 @@ import java.util.*;
 /**
  * Represents a plant in the garden simulation.
  * Tracks plant health, moisture, temperature stress, parasite infestations, and growth.
+ * 
+ * <p>This class is immutable in terms of name and species, but mutable in terms of
+ * health, moisture, parasites, and growth state. Thread safety should be handled
+ * by the containing Garden class.
  */
 public class Plant {
     private final String name;
@@ -21,15 +25,26 @@ public class Plant {
     private int daysToHarvest;
     private int growthStage = 0; // 0=seed, 1=sprout, 2=small, 3=medium, 4=ready
 
+    private static final int INITIAL_HEALTH_MIN = 60;
+    private static final int INITIAL_HEALTH_MAX = 80;
+    private static final int INITIAL_HEALTH_RANGE = INITIAL_HEALTH_MAX - INITIAL_HEALTH_MIN + 1;
+    private static final int DEFAULT_DAYS_TO_HARVEST = 5;
+    
     public Plant(String name, Species species) {
+        if (name == null || name.trim().isEmpty()) {
+            throw new IllegalArgumentException("Plant name cannot be null or empty");
+        }
+        if (species == null) {
+            throw new IllegalArgumentException("Plant species cannot be null");
+        }
         this.name = name;
         this.species = species;
-        // Set random initial health between 60-80%
-        this.health = 60 + (int)(Math.random() * 21); // 60 + (0-20) = 60-80
+        // Set random initial health between INITIAL_HEALTH_MIN-INITIAL_HEALTH_MAX%
+        this.health = INITIAL_HEALTH_MIN + (int)(Math.random() * INITIAL_HEALTH_RANGE);
         
         // Get days to harvest from PlantType
         PlantType plantType = PlantType.fromString(species.getName());
-        this.daysToHarvest = plantType != null ? plantType.getDaysToHarvest() : 5;
+        this.daysToHarvest = plantType != null ? plantType.getDaysToHarvest() : DEFAULT_DAYS_TO_HARVEST;
     }
 
     public String getName() { return name; }
@@ -77,17 +92,29 @@ public class Plant {
      * Calculates harvest reward based on health and maturity.
      * @return The coin reward for harvesting this plant
      */
+    private static final int BASE_REWARD_MATURE = 30;
+    private static final int BASE_REWARD_NORMAL = 20;
+    private static final int HEALTH_BONUS_HIGH = 20;
+    private static final int HEALTH_BONUS_MEDIUM = 10;
+    private static final int HEALTH_BONUS_LOW = 5;
+    private static final int HEALTH_THRESHOLD_HIGH = 80;
+    private static final int HEALTH_THRESHOLD_MEDIUM = 50;
+    
     public int calculateHarvestReward() {
         boolean isFullyMature = daysPlanted >= daysToHarvest + 1; // Extra day = fully mature
-        int baseReward = isFullyMature ? 30 : 20; // Fully mature = more coins
-        int healthBonus = health > 80 ? 20 : health > 50 ? 10 : 5;
+        int baseReward = isFullyMature ? BASE_REWARD_MATURE : BASE_REWARD_NORMAL;
+        int healthBonus = health > HEALTH_THRESHOLD_HIGH ? HEALTH_BONUS_HIGH 
+                         : health > HEALTH_THRESHOLD_MEDIUM ? HEALTH_BONUS_MEDIUM 
+                         : HEALTH_BONUS_LOW;
         return baseReward + healthBonus;
     }
 
+    private static final int HEALTH_DAMAGE_WHEN_DRY = 5;
+    
     public void applyDailyWaterNeed() {
         soilMoisture = Math.max(0, soilMoisture - species.getDailyWaterNeed());
         if (soilMoisture == 0) {
-            health = Math.max(0, health - 5);
+            health = Math.max(0, health - HEALTH_DAMAGE_WHEN_DRY);
         }
     }
 
@@ -95,13 +122,17 @@ public class Plant {
         soilMoisture = Math.min(100, soilMoisture + amount);
     }
 
+    private static final int TEMPERATURE_STRESS_RECOVERY_RATE = 2;
+    private static final int TEMPERATURE_STRESS_DAMAGE_THRESHOLD = 20;
+    private static final int TEMPERATURE_STRESS_DAMAGE = 3;
+    
     public void setTemperature(int f) {
         int min = species.getTempMin(), max = species.getTempMax();
         if (f < min) temperatureStress += (min - f);
         else if (f > max) temperatureStress += (f - max);
-        else temperatureStress = Math.max(0, temperatureStress - 2);
-        if (temperatureStress > 20) {
-            health = Math.max(0, health - 3);
+        else temperatureStress = Math.max(0, temperatureStress - TEMPERATURE_STRESS_RECOVERY_RATE);
+        if (temperatureStress > TEMPERATURE_STRESS_DAMAGE_THRESHOLD) {
+            health = Math.max(0, health - TEMPERATURE_STRESS_DAMAGE);
         }
     }
 
@@ -112,14 +143,24 @@ public class Plant {
      * @param parasite The parasite name to infest the plant with
      */
     public void infest(String parasite) {
-        if (parasite != null && !parasite.isEmpty()) {
-            parasites.add(parasite);
+        if (parasite != null && !parasite.trim().isEmpty()) {
+            parasites.add(parasite.trim());
         }
     }
 
+    private static final int EFFICACY_THRESHOLD_GUARANTEED = 100;
+    private static final int EFFICACY_THRESHOLD_CHANCE = 50;
+    private static final double CURE_SUCCESS_CHANCE = 0.6;
+    
     public void cure(String parasite, int efficacy) {
-        if (parasites.contains(parasite) && efficacy >= 100) parasites.remove(parasite);
-        else if (parasites.contains(parasite) && efficacy >= 50 && Math.random() < 0.6) parasites.remove(parasite);
+        if (parasite == null || !parasites.contains(parasite)) {
+            return;
+        }
+        if (efficacy >= EFFICACY_THRESHOLD_GUARANTEED) {
+            parasites.remove(parasite);
+        } else if (efficacy >= EFFICACY_THRESHOLD_CHANCE && Math.random() < CURE_SUCCESS_CHANCE) {
+            parasites.remove(parasite);
+        }
     }
 
     /**

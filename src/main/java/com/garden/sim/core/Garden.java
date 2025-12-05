@@ -9,9 +9,17 @@ import java.util.*;
 import java.util.stream.Collectors;
 import com.garden.sim.core.orgjson.*;
 
+/**
+ * Core garden management class.
+ * Manages plants, species definitions, coin economy, and plot assignments.
+ * Thread-safe for read operations; write operations should be synchronized externally if needed.
+ */
 public class Garden {
     private static final int DEFAULT_TEMPERATURE_F = 72;
     private static final int INITIAL_COINS = 100;
+    private static final int LOW_MOISTURE_THRESHOLD = 30;
+    private static final int TEMPERATURE_STRESS_THRESHOLD = 20;
+    private static final double RANDOM_PARASITE_ATTACK_CHANCE = 0.15;
     
     @SuppressWarnings("unused") // Used via event bus subscription
     private final EventBus bus;
@@ -25,7 +33,15 @@ public class Garden {
     private int coins = INITIAL_COINS;
     private final Map<String, String> plotAssignments = new HashMap<>(); // "row,col" -> plantName
 
+    /**
+     * Creates a new Garden instance.
+     * @param bus The event bus to subscribe to and publish events on
+     * @throws IllegalArgumentException if bus is null
+     */
     public Garden(EventBus bus) {
+        if (bus == null) {
+            throw new IllegalArgumentException("EventBus cannot be null");
+        }
         this.bus = bus;
         // Subscribe to day ticks to update plants daily
         bus.subscribe(EventBus.Topic.DAY_TICK, e -> dayTick());
@@ -137,13 +153,33 @@ public class Garden {
      * @return true if plant was added successfully, false if insufficient coins or plot occupied
      */
     public boolean addPlant(String plotKey, String plantName, String speciesName, int waterRequirement, int tempMin, int tempMax, List<String> parasiteVulns, int seedPrice) {
+        // Input validation
+        if (plotKey == null || plotKey.trim().isEmpty()) {
+            Logger.log(Logger.LogLevel.WARNING, "addPlant: Invalid plotKey");
+            return false;
+        }
+        if (plantName == null || plantName.trim().isEmpty()) {
+            Logger.log(Logger.LogLevel.WARNING, "addPlant: Invalid plantName");
+            return false;
+        }
+        if (speciesName == null || speciesName.trim().isEmpty()) {
+            Logger.log(Logger.LogLevel.WARNING, "addPlant: Invalid speciesName");
+            return false;
+        }
+        if (seedPrice < 0) {
+            Logger.log(Logger.LogLevel.WARNING, "addPlant: Invalid seedPrice: " + seedPrice);
+            return false;
+        }
+        
         // Check if plot is already occupied
         if (plotAssignments.containsKey(plotKey)) {
+            Logger.log(Logger.LogLevel.INFO, "addPlant: Plot " + plotKey + " is already occupied");
             return false; // Plot occupied
         }
         
         // Check if user has enough coins
         if (coins < seedPrice) {
+            Logger.log(Logger.LogLevel.INFO, "addPlant: Insufficient coins. Have: " + coins + ", Need: " + seedPrice);
             return false; // Insufficient coins
         }
         
@@ -222,6 +258,10 @@ public class Garden {
      * @return Species object or null if not found
      */
     public Species getSpeciesInfo(String speciesName) {
+        if (speciesName == null || speciesName.trim().isEmpty()) {
+            Logger.log(Logger.LogLevel.WARNING, "getSpeciesInfo: Invalid speciesName");
+            return null;
+        }
         return speciesByName.get(speciesName);
     }
 
@@ -352,13 +392,13 @@ public class Garden {
                 p.advanceDay();
                 
                 p.applyDailyWaterNeed();
-                if (p.getSoilMoisture() < 30) lowMoistureCount++;
+                if (p.getSoilMoisture() < LOW_MOISTURE_THRESHOLD) lowMoistureCount++;
                 
                 if (!p.getParasites().isEmpty()) infestedCount++;
                 p.dailyParasiteDamage();
                 
                 p.setTemperature(lastTemperatureF);
-                if (p.getTemperatureStress() > 20) stressedCount++;
+                if (p.getTemperatureStress() > TEMPERATURE_STRESS_THRESHOLD) stressedCount++;
             } catch (Throwable t) {
                 Logger.log(Logger.LogLevel.ERROR, "dayTick plant error for " + p.getName() + ": " + t.getMessage());
             }
@@ -385,9 +425,8 @@ public class Garden {
         }
         
         Random random = new Random();
-        double attackChance = 0.15; // 15% chance
         
-        if (random.nextDouble() >= attackChance) {
+        if (random.nextDouble() >= RANDOM_PARASITE_ATTACK_CHANCE) {
             return; // No attack this time
         }
         
@@ -402,6 +441,10 @@ public class Garden {
     }
 
     public void onRain(int amount) {
+        if (amount < 0) {
+            Logger.log(Logger.LogLevel.WARNING, "onRain: Invalid rain amount: " + amount);
+            return;
+        }
         int watered = 0;
         for (Plant p : plants) {
             try { 
@@ -416,11 +459,19 @@ public class Garden {
     }
 
     public void onTemperature(int f) {
+        // Temperature range validation (per API spec: 40-120 F)
+        if (f < 40 || f > 120) {
+            Logger.log(Logger.LogLevel.WARNING, "onTemperature: Temperature " + f + "F is outside valid range (40-120F)");
+        }
         this.lastTemperatureF = f;
         Logger.log(Logger.LogLevel.INFO, "Temperature set to " + f + "F");
     }
 
     public void onParasite(String name) {
+        if (name == null || name.trim().isEmpty()) {
+            Logger.log(Logger.LogLevel.WARNING, "onParasite: Invalid parasite name");
+            return;
+        }
         int infested = 0;
         for (Plant p : plants) {
             try { 
