@@ -1,87 +1,56 @@
 package com.garden.sim.core.logger;
 
-import java.io.*;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 /**
- * Enhanced Logger class with LogLevel enum, similar to oops_project design pattern.
- * Provides centralized logging with different log levels.
+ * Logger class matching oops_project implementation.
+ * Provides static logging with different log levels.
  */
 public class Logger {
-    private final File file;
-    private final DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-    private static boolean enableConsoleLogging = false; // Disable by default to avoid clutter
+    private static final String LOG_FILE = "log.txt"; // Log file name (per API spec)
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    /**
-     * Log levels similar to oops_project.
-     */
+    // Log levels
     public enum LogLevel {
         INFO, WARNING, ERROR, DEBUG
     }
 
-    public Logger(String path) {
-        this.file = new File(path);
-    }
+    private static boolean enableConsoleLogging = true; // Toggle console logging
 
     /**
-     * Log with LogLevel enum (similar to oops_project pattern).
+     * Log a message to the log file and optionally to the console.
+     *
+     * @param level   The log level (INFO, WARNING, ERROR, DEBUG).
+     * @param message The message to log.
      */
-    public synchronized void log(LogLevel level, String message) {
-        String timestamp = LocalDateTime.now().format(fmt);
+    public static void log(LogLevel level, String message) {
+        String timestamp = LocalDateTime.now().format(formatter);
         String logEntry = String.format("[%s] [%s] %s", timestamp, level, message);
-        
-        write(logEntry, null);
-        
+
+        // Write to log file
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(LOG_FILE, true))) {
+            writer.write(logEntry);
+            writer.newLine();
+        } catch (IOException e) {
+            System.err.println("Error writing to log file: " + e.getMessage());
+        }
+
+        // Optionally log to console
         if (enableConsoleLogging) {
             System.out.println(logEntry);
         }
     }
 
-    // Convenience methods for backward compatibility
-    public synchronized void info(String msg) { 
-        log(LogLevel.INFO, msg); 
-    }
-    
-    public synchronized void warn(String msg) { 
-        log(LogLevel.WARNING, msg); 
-    }
-    
-    public synchronized void error(String msg, Throwable t) { 
-        log(LogLevel.ERROR, msg);
-        if (t != null) {
-            write("", t); // Write stack trace
-        }
-    }
-    
-    public synchronized void debug(String msg) { 
-        log(LogLevel.DEBUG, msg); 
-    }
-
-    private void write(String logEntry, Throwable t) {
-        try (FileWriter fw = new FileWriter(file, true);
-             BufferedWriter bw = new BufferedWriter(fw);
-             PrintWriter out = new PrintWriter(bw)) {
-
-            if (!logEntry.isEmpty()) {
-                out.println(logEntry);
-            }
-            if (t != null) {
-                t.printStackTrace(out);
-            }
-        } catch (IOException e) {
-            System.err.println("Error writing to log file: " + e.getMessage());
-        }
-    }
-
     /**
      * Enable or disable console logging.
+     *
+     * @param enable True to enable console logging, false to disable.
      */
     public static void setConsoleLogging(boolean enable) {
         enableConsoleLogging = enable;
     }
 }
-
-
-
-

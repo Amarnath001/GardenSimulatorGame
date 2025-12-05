@@ -1,12 +1,17 @@
 .log-area .content {
     -fx-background-color: #000000;
     -fx-text-fill: #FFFFFF;
+    -fx-font-family: 'Courier New', monospace;
+    -fx-font-size: 12px;
+    -fx-font-smoothing-type: lcd;
 }
 
 .log-area {
     -fx-background-color: #000000;
     -fx-text-fill: #FFFFFF;
     -fx-control-inner-background: #000000;
+    -fx-font-smoothing-type: lcd;
+    -fx-text-alignment: left;
 }
 
 

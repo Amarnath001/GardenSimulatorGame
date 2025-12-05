@@ -12,11 +12,8 @@ import javafx.stage.Stage;
  * Initializes the simulation API and displays the dashboard UI.
  */
 public class GardenApp extends Application {
-    private static final String LOG_FILE = "log.txt";
     private static final int WINDOW_WIDTH = 1100;
     private static final int WINDOW_HEIGHT = 700;
-    
-    private final Logger log = new Logger(LOG_FILE);
 
     @Override
     public void start(Stage stage) {
@@ -26,9 +23,13 @@ public class GardenApp extends Application {
             stage.setTitle("Computerized Garden Simulator");
             stage.setScene(new Scene(view, WINDOW_WIDTH, WINDOW_HEIGHT));
             stage.show();
+            
+            // Ask for user's name after stage is shown
+            Platform.runLater(() -> view.askForUserName());
+            
             api.initializeGarden();
         } catch (Exception e) {
-            log.error("UI start failed", e);
+            Logger.log(Logger.LogLevel.ERROR, "UI start failed: " + e.getMessage());
             Platform.exit();
         }
     }
