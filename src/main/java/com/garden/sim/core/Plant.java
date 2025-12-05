@@ -110,9 +110,19 @@ public class Plant {
     }
 
     private static final int HEALTH_DAMAGE_WHEN_DRY = 5;
+    private static final int NATURAL_MOISTURE_DECAY = 2; // Natural evaporation/decay per day
     
+    /**
+     * Applies daily water consumption and natural moisture decay.
+     * Moisture decreases from both plant water needs and natural evaporation.
+     */
     public void applyDailyWaterNeed() {
+        // Natural moisture decay (evaporation) happens regardless of plant
+        soilMoisture = Math.max(0, soilMoisture - NATURAL_MOISTURE_DECAY);
+        
+        // Plant water consumption
         soilMoisture = Math.max(0, soilMoisture - species.getDailyWaterNeed());
+        
         if (soilMoisture == 0) {
             health = Math.max(0, health - HEALTH_DAMAGE_WHEN_DRY);
         }
