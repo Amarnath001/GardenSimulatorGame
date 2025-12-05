@@ -149,18 +149,41 @@ public class Plant {
     }
 
     private static final int EFFICACY_THRESHOLD_GUARANTEED = 100;
+    private static final int EFFICACY_THRESHOLD_HIGH = 80;
     private static final int EFFICACY_THRESHOLD_CHANCE = 50;
-    private static final double CURE_SUCCESS_CHANCE = 0.6;
+    private static final double CURE_SUCCESS_CHANCE_HIGH = 0.9; // 90% chance for high efficacy
+    private static final double CURE_SUCCESS_CHANCE = 0.75; // Increased from 0.6 to 0.75 (75% chance)
     
+    /**
+     * Attempts to cure a parasite infestation.
+     * Cure success depends on treatment efficacy:
+     * - 100% efficacy: Guaranteed cure
+     * - 80-99% efficacy: 90% chance to cure
+     * - 50-79% efficacy: 75% chance to cure
+     * - Below 50%: No effect
+     * 
+     * @param parasite The parasite name to cure
+     * @param efficacy The treatment efficacy (0-100)
+     */
     public void cure(String parasite, int efficacy) {
         if (parasite == null || !parasites.contains(parasite)) {
             return;
         }
         if (efficacy >= EFFICACY_THRESHOLD_GUARANTEED) {
+            // 100% efficacy: guaranteed cure
             parasites.remove(parasite);
-        } else if (efficacy >= EFFICACY_THRESHOLD_CHANCE && Math.random() < CURE_SUCCESS_CHANCE) {
-            parasites.remove(parasite);
+        } else if (efficacy >= EFFICACY_THRESHOLD_HIGH) {
+            // 80-99% efficacy: 90% chance to cure
+            if (Math.random() < CURE_SUCCESS_CHANCE_HIGH) {
+                parasites.remove(parasite);
+            }
+        } else if (efficacy >= EFFICACY_THRESHOLD_CHANCE) {
+            // 50-79% efficacy: 75% chance to cure
+            if (Math.random() < CURE_SUCCESS_CHANCE) {
+                parasites.remove(parasite);
+            }
         }
+        // Below 50% efficacy: no effect
     }
 
     /**

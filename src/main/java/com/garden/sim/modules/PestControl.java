@@ -82,23 +82,43 @@ public class PestControl {
                 for (String parasite : parasites) {
                     int eff = 50 + rnd.nextInt(51); // 50..100
                     int before = p.getParasites().size();
+                    boolean wasCured = p.getParasites().contains(parasite);
                     p.cure(parasite, eff);
-                    if (p.getParasites().size() < before) {
+                    boolean isCured = !p.getParasites().contains(parasite);
+                    
+                    if (isCured && wasCured) {
                         cures++;
+                        if (eff >= 100) {
+                            Logger.log(Logger.LogLevel.INFO, 
+                                "PestControl: Parasite sensor " + sensor.getName() + 
+                                " detected " + parasite + " on " + p.getName() + 
+                                ". Treatment applied (efficacy: " + eff + "%) - guaranteed cure (100% efficacy)");
+                        } else {
+                            Logger.log(Logger.LogLevel.INFO, 
+                                "PestControl: Parasite sensor " + sensor.getName() + 
+                                " detected " + parasite + " on " + p.getName() + 
+                                ". Treatment applied (efficacy: " + eff + "%) - probabilistic cure succeeded (60% chance at " + eff + "% efficacy)");
+                        }
+                    } else if (wasCured && !isCured) {
                         Logger.log(Logger.LogLevel.INFO, 
                             "PestControl: Parasite sensor " + sensor.getName() + 
                             " detected " + parasite + " on " + p.getName() + 
-                            ". Treatment applied (efficacy: " + eff + "%) - cured");
+                            ". Treatment applied (efficacy: " + eff + "%) - probabilistic cure failed (parasite resisted, 40% failure chance at " + eff + "% efficacy)");
                     }
                 }
             }
         }
         
         if (totalInfestations > 0) {
+            double successRate = totalInfestations > 0 ? (100.0 * cures / totalInfestations) : 0;
             Logger.log(Logger.LogLevel.INFO, 
-                "PestControl: Parasite sensors detected " + totalInfestations + " infestations, " +
+                "PestControl: Parasite sensors detected " + totalInfestations + " infestation(s), " +
                 "treated and cured " + cures + " (success rate: " + 
-                String.format("%.1f", totalInfestations > 0 ? (100.0 * cures / totalInfestations) : 0) + "%)");
+                String.format("%.1f", successRate) + "%). " +
+                "Note: Treatment is probabilistic - efficacy 50-99% has 60% cure chance, 100% efficacy is guaranteed.");
+        } else {
+            Logger.log(Logger.LogLevel.INFO, 
+                "PestControl: No infestations detected - all plants are parasite-free");
         }
     }
 }
