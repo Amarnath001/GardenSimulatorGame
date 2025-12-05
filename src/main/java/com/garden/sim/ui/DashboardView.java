@@ -85,7 +85,7 @@ public class DashboardView extends BorderPane {
         int moisture = 50; // Synced from backend
         int daysPlanted = 0; // Synced from backend
         int daysToHarvest;  // Plant-specific harvest time
-        boolean hasParasite = false; // Synced from backend
+        List<String> parasites = new ArrayList<>(); // Synced from backend - list of parasite names
         boolean readyToHarvest = false; // Synced from backend
         
         PlotData(String plantName, String species, int daysToHarvest) {
@@ -525,9 +525,13 @@ public class DashboardView extends BorderPane {
             healthLabel.setFont(Font.font(FONT_ARIAL, FontWeight.BOLD, 16)); // Increased from 9 to 16, made bold
             healthLabel.setTextFill(Color.web(healthColor));
             
-            // Parasite warning
-            if (plot.hasParasite) {
-                Label parasiteLabel = new Label("⚠");
+            // Parasite emojis - show all parasites that have infected this plant
+            if (!plot.parasites.isEmpty()) {
+                StringBuilder parasiteEmojis = new StringBuilder();
+                for (String parasite : plot.parasites) {
+                    parasiteEmojis.append(getParasiteEmoji(parasite));
+                }
+                Label parasiteLabel = new Label(parasiteEmojis.toString());
                 parasiteLabel.setFont(Font.font(FONT_ARIAL, 16));
                 parasiteLabel.setTextFill(Color.RED);
                 content.getChildren().add(parasiteLabel);
@@ -861,7 +865,9 @@ public class DashboardView extends BorderPane {
                 plot.moisture = moistureList.get(idx);
             }
             if (parasites != null && idx < parasites.size()) {
-                plot.hasParasite = !parasites.get(idx).isEmpty();
+                @SuppressWarnings("unchecked")
+                List<String> parasiteList = (List<String>) parasites.get(idx);
+                plot.parasites = parasiteList != null ? new ArrayList<>(parasiteList) : new ArrayList<>();
             }
             if (daysPlantedList != null && idx < daysPlantedList.size()) {
                 plot.daysPlanted = daysPlantedList.get(idx);
@@ -898,12 +904,13 @@ public class DashboardView extends BorderPane {
             if (plot != null) {
                 int oldHealth = plot.health;
                 int oldGrowthStage = plot.growthStage;
-                boolean oldHasParasite = plot.hasParasite;
+                List<String> oldParasites = new ArrayList<>(plot.parasites);
                 
                 syncPlotFromBackend(plot);
                 
                 // Check if anything changed
-                if (plot.health != oldHealth || plot.growthStage != oldGrowthStage || plot.hasParasite != oldHasParasite) {
+                boolean parasitesChanged = !plot.parasites.equals(oldParasites);
+                if (plot.health != oldHealth || plot.growthStage != oldGrowthStage || parasitesChanged) {
                     needsRefresh = true;
                 }
             }
@@ -1032,7 +1039,9 @@ public class DashboardView extends BorderPane {
                             plot.moisture = moistureList.get(idx);
                         }
                         if (parasites != null && idx < parasites.size()) {
-                            plot.hasParasite = !parasites.get(idx).isEmpty();
+                            @SuppressWarnings("unchecked")
+                            List<String> parasiteList = (List<String>) parasites.get(idx);
+                            plot.parasites = parasiteList != null ? new ArrayList<>(parasiteList) : new ArrayList<>();
                         }
                     }
                 }
@@ -1055,7 +1064,7 @@ public class DashboardView extends BorderPane {
                         r, c, plot.plantName, plot.health, plot.moisture, 
                         plot.growthStage, plot.daysPlanted, plot.daysToHarvest,
                         daysRemaining > 0 ? daysRemaining + " days left" : "Ready!",
-                        plot.hasParasite ? "Yes" : "No"
+                        plot.parasites.isEmpty() ? "No" : String.join(", ", plot.parasites)
                     );
                     
                     Logger.log(Logger.LogLevel.INFO, status);
@@ -1100,7 +1109,9 @@ public class DashboardView extends BorderPane {
                             plot.moisture = moistureList.get(idx);
                         }
                         if (parasites != null && idx < parasites.size()) {
-                            plot.hasParasite = !parasites.get(idx).isEmpty();
+                            @SuppressWarnings("unchecked")
+                            List<String> parasiteList = (List<String>) parasites.get(idx);
+                            plot.parasites = parasiteList != null ? new ArrayList<>(parasiteList) : new ArrayList<>();
                         }
                     }
                 }
@@ -1142,7 +1153,7 @@ public class DashboardView extends BorderPane {
                     }
                     
                     // Check parasite status
-                    if (plot.hasParasite) {
+                    if (!plot.parasites.isEmpty()) {
                         infestedPlants++;
                     }
                     
@@ -1158,7 +1169,7 @@ public class DashboardView extends BorderPane {
                         r, c, plot.plantName, plot.health, plot.moisture, 
                         plot.growthStage, plot.daysPlanted, plot.daysToHarvest,
                         daysRemaining > 0 ? daysRemaining + " days left" : "Ready!",
-                        plot.hasParasite ? "Yes" : "No"
+                        plot.parasites.isEmpty() ? "No" : String.join(", ", plot.parasites)
                     ));
                 }
             }
@@ -1672,7 +1683,7 @@ public class DashboardView extends BorderPane {
         // Count infested plots before treatment
         final int[] infestedBefore = {0};
         for (PlotData plot : plots.values()) {
-            if (plot != null && plot.hasParasite) {
+            if (plot != null && !plot.parasites.isEmpty()) {
                 infestedBefore[0]++;
             }
         }
@@ -1696,8 +1707,10 @@ public class DashboardView extends BorderPane {
                     if (plot != null && plantNames != null && plantNames.contains(plot.plantName)) {
                         int idx = plantNames.indexOf(plot.plantName);
                         if (idx >= 0 && parasites != null && idx < parasites.size()) {
-                            plot.hasParasite = !parasites.get(idx).isEmpty();
-                            if (plot.hasParasite) {
+                            @SuppressWarnings("unchecked")
+                            List<String> parasiteList = (List<String>) parasites.get(idx);
+                            plot.parasites = parasiteList != null ? new ArrayList<>(parasiteList) : new ArrayList<>();
+                            if (!plot.parasites.isEmpty()) {
                                 infestedAfter++;
                             }
                         }
