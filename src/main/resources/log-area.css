@@ -1,0 +1,13 @@
+.log-area .content {
+    -fx-background-color: #000000;
+    -fx-text-fill: #FFFFFF;
+}
+
+.log-area {
+    -fx-background-color: #000000;
+    -fx-text-fill: #FFFFFF;
+    -fx-control-inner-background: #000000;
+}
+
+
+
