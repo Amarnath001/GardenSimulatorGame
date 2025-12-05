@@ -110,7 +110,7 @@ public class Plant {
     }
 
     private static final int HEALTH_DAMAGE_WHEN_DRY = 5;
-    private static final int NATURAL_MOISTURE_DECAY = 2; // Natural evaporation/decay per day
+    private static final int NATURAL_MOISTURE_DECAY = 20; // Natural evaporation/decay per day
     
     /**
      * Applies daily water consumption and natural moisture decay.
