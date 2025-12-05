@@ -23,6 +23,9 @@ public interface GertenSimulationAPI {
     /** Introduce a parasite by name (e.g., "aphid") into the garden. */
     void parasite(String name);
     
+    /** Infect a specific plant by name with a parasite. */
+    boolean infectPlant(String plantName, String parasiteName);
+    
     /** Add a new plant to the garden when user plants a seed. */
     boolean addPlant(String plotKey, String plantName, String species, int waterRequirement, int tempMin, int tempMax, List<String> parasiteVulns, int seedPrice);
     

@@ -1624,9 +1624,15 @@ public class DashboardView extends BorderPane {
             return;
         }
         
-        // Apply parasite via backend - backend handles all logic and logging
-        api.parasite(selectedParasite);
-        statusLabel.setText("Parasite " + getParasiteDisplayName(selectedParasite) + " applied to garden");
+        // Infect specific plant via backend - backend handles all logic and logging
+        boolean success = api.infectPlant(plot.plantName, selectedParasite);
+        if (success) {
+            statusLabel.setText("Parasite " + getParasiteDisplayName(selectedParasite) + " applied to " + plot.plantName);
+            addLogEntry("Parasite attack: " + getParasiteDisplayName(selectedParasite) + " infected " + plot.plantName + " at plot (" + row + "," + col + ")");
+        } else {
+            statusLabel.setText("Failed to infect " + plot.plantName);
+            addLogEntry("Parasite attack: Failed to infect " + plot.plantName + " at plot (" + row + "," + col + ")");
+        }
         
         // Refresh to show parasite status (will sync from backend)
         refreshGarden();

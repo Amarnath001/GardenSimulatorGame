@@ -484,6 +484,50 @@ public class Garden {
         }
         Logger.log(Logger.LogLevel.INFO, "Parasite introduced: " + name + " (affected " + infested + " plants)");
     }
+    
+    /**
+     * Infects a specific plant by name with a parasite.
+     * @param plantName The name of the plant to infect
+     * @param parasiteName The parasite name to introduce
+     * @return true if the plant was found and infected, false otherwise
+     */
+    public boolean infectPlant(String plantName, String parasiteName) {
+        if (plantName == null || plantName.trim().isEmpty()) {
+            Logger.log(Logger.LogLevel.WARNING, "infectPlant: Invalid plant name");
+            return false;
+        }
+        if (parasiteName == null || parasiteName.trim().isEmpty()) {
+            Logger.log(Logger.LogLevel.WARNING, "infectPlant: Invalid parasite name");
+            return false;
+        }
+        
+        Plant plant = plants.stream()
+            .filter(p -> p.getName().equals(plantName))
+            .findFirst()
+            .orElse(null);
+        
+        if (plant == null) {
+            Logger.log(Logger.LogLevel.WARNING, "infectPlant: Plant not found: " + plantName);
+            return false;
+        }
+        
+        if (plant.isDead()) {
+            Logger.log(Logger.LogLevel.WARNING, "infectPlant: Cannot infect dead plant: " + plantName);
+            return false;
+        }
+        
+        boolean wasInfested = !plant.getParasites().isEmpty();
+        plant.infest(parasiteName);
+        boolean isNowInfested = !plant.getParasites().isEmpty();
+        
+        if (isNowInfested && !wasInfested) {
+            Logger.log(Logger.LogLevel.INFO, "Parasite " + parasiteName + " introduced to plant " + plantName);
+        } else if (isNowInfested) {
+            Logger.log(Logger.LogLevel.INFO, "Parasite " + parasiteName + " added to plant " + plantName + " (already had other parasites)");
+        }
+        
+        return true;
+    }
 
     public void reportState() {
         long alive = plants.stream().filter(p -> !p.isDead()).count();

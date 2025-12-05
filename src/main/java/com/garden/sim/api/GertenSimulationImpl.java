@@ -95,6 +95,17 @@ public final class GertenSimulationImpl implements GertenSimulationAPI {
 
     @Override public void parasite(String name) { safe(() -> { garden.onParasite(name); bus.publish(EventBus.Topic.PARASITE, name); }); }
     
+    @Override
+    public boolean infectPlant(String plantName, String parasiteName) {
+        return safe(() -> {
+            boolean result = garden.infectPlant(plantName, parasiteName);
+            if (result) {
+                bus.publish(EventBus.Topic.PARASITE, parasiteName);
+            }
+            return result;
+        }, false);
+    }
+    
     @Override 
     public boolean addPlant(String plotKey, String plantName, String species, int waterRequirement, int tempMin, int tempMax, List<String> parasiteVulns, int seedPrice) {
         return safe(() -> garden.addPlant(plotKey, plantName, species, waterRequirement, tempMin, tempMax, parasiteVulns, seedPrice), false);
