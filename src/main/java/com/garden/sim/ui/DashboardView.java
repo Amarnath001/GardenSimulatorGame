@@ -785,7 +785,7 @@ public class DashboardView extends BorderPane {
         updateCoinsDisplay();
         
         statusLabel.setText("Harvested " + plot.plantName + "! Earned " + reward + " coins. (Days: " + plot.daysPlanted + ", Health: " + plot.health + "%)");
-        addLogEntry("✂️ Harvested " + plot.plantName + " - Earned " + reward + " coins (Days: " + plot.daysPlanted + ", Health: " + plot.health + "%)");
+        addLogEntry("Harvested " + plot.plantName + " - Earned " + reward + " coins (Days: " + plot.daysPlanted + ", Health: " + plot.health + "%)");
         refreshGarden();
     }
     
@@ -816,11 +816,11 @@ public class DashboardView extends BorderPane {
             
             int harvested = toRemove.size();
             statusLabel.setText("Harvested " + harvested + " plant(s)! Earned " + totalEarned + " coins total.");
-            addLogEntry("✂️ Harvested " + harvested + " plant(s) - Total earnings: " + totalEarned + " coins");
+            addLogEntry("Harvested " + harvested + " plant(s) - Total earnings: " + totalEarned + " coins");
             refreshGarden();
         } else {
             statusLabel.setText("No plants ready to harvest!");
-            addLogEntry("✂️ Harvest all ready: No plants ready to harvest");
+            addLogEntry("Harvest all ready: No plants ready to harvest");
         }
     }
 
@@ -929,7 +929,7 @@ public class DashboardView extends BorderPane {
         // Subscribe to DAY_TICK events
         bus.subscribe(EventBus.Topic.DAY_TICK, (payload) -> {
             Platform.runLater(() -> {
-                addLogEntry("📅 Day " + payload + " has begun");
+                addLogEntry("Day " + payload + " has begun");
                 day = (Integer) payload;
                 dayLabel.setText("Day: " + day);
                 
@@ -944,7 +944,7 @@ public class DashboardView extends BorderPane {
         // Subscribe to RAIN events
         bus.subscribe(EventBus.Topic.RAIN, (payload) -> {
             Platform.runLater(() -> {
-                addLogEntry("🌧️ Rain event: +" + payload + " water units");
+                addLogEntry("Rain event: +" + payload + " water units");
             });
         });
         
@@ -955,7 +955,7 @@ public class DashboardView extends BorderPane {
                 currentTemperature = newTemperature;
                 temperatureLabel.setText("Temp: " + currentTemperature + "°F");
                 // Log temperature change to UI log area
-                addLogEntry("🌡️ Temperature changed to " + newTemperature + "°F");
+                addLogEntry("Temperature changed to " + newTemperature + "°F");
             });
         });
         
@@ -966,7 +966,7 @@ public class DashboardView extends BorderPane {
                 Map<String, Integer> temps = (Map<String, Integer>) payload;
                 int original = temps.get("original");
                 int mitigated = temps.get("mitigated");
-                addLogEntry("🔥 Heating System: Set temperature " + original + "°F is too cold (minimum: 60°F). " +
+                addLogEntry("Heating System: Set temperature " + original + "°F is too cold (minimum: 60°F). " +
                            "Heating system activated and raised temperature to " + mitigated + "°F");
             });
         });
@@ -974,7 +974,7 @@ public class DashboardView extends BorderPane {
         // Subscribe to PARASITE events
         bus.subscribe(EventBus.Topic.PARASITE, (payload) -> {
             Platform.runLater(() -> {
-                addLogEntry("🐛 Parasite detected: " + payload);
+                addLogEntry("Parasite detected: " + payload);
             });
         });
     }
@@ -1615,7 +1615,7 @@ public class DashboardView extends BorderPane {
         
         if (plot == null) {
             statusLabel.setText("Cannot infect empty plot! Plant a seed first.");
-            addLogEntry("🐛 Parasite attack: Nothing to infect at plot (" + row + "," + col + ") - plot is empty");
+            addLogEntry("Parasite attack: Nothing to infect at plot (" + row + "," + col + ") - plot is empty");
             return;
         }
         
@@ -1701,19 +1701,19 @@ public class DashboardView extends BorderPane {
                 int cured = infestedBefore[0] - infestedAfter;
                 if (cured > 0) {
                     statusLabel.setText("Pest control applied! Cured " + cured + " infestation(s).");
-                    addLogEntry("🛡️ Pest control: Cured " + cured + " infestation(s)");
+                    addLogEntry("Pest control: Cured " + cured + " infestation(s)");
                 } else if (infestedBefore[0] > 0) {
                     statusLabel.setText("Pest control applied! Some parasites resisted treatment.");
-                    addLogEntry("🛡️ Pest control: Treatment applied, " + infestedAfter + " infestation(s) remain");
+                    addLogEntry("Pest control: Treatment applied, " + infestedAfter + " infestation(s) remain");
                 } else {
                     statusLabel.setText("No parasites detected. Pest control not needed.");
-                    addLogEntry("🛡️ Pest control: No infestations found");
+                    addLogEntry("Pest control: No infestations found");
                 }
                 
                 refreshGarden();
             } catch (Exception e) {
                 statusLabel.setText("Pest control applied!");
-                addLogEntry("🛡️ Pest control treatment applied");
+                addLogEntry("Pest control treatment applied");
                 refreshGarden();
             }
         });
