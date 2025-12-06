@@ -7,7 +7,7 @@ import java.util.Map;
  * API interface for the Garden Simulation system.
  * Provides methods to interact with the garden simulation.
  */
-public interface GertenSimulationAPI {
+public interface GardenSimulationAPI {
     /** Starts the simulation: 1 real hour == 1 simulated day. */
     void initializeGarden();
 
