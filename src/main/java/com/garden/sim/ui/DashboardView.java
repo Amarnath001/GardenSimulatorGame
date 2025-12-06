@@ -26,11 +26,13 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
 /**
- * Stardew Valley-style 2D garden game with 6 planting spots.
+ * Stardew Valley-style 2D garden game with 27 planting spots (9 rows x 3 columns).
  * Features: Plant seeds, watch them grow, harvest, manage resources.
  */
 public class DashboardView extends BorderPane {
     // Constants
+    private static final int GRID_ROWS = 9;
+    private static final int GRID_COLS = 3;
     private static final String FONT_ARIAL = "Arial";
     private static final String SEED_TOMATO = "Tomato";
     private static final String SEED_ROSE = "Rose";
@@ -49,8 +51,8 @@ public class DashboardView extends BorderPane {
     private static final int INDIVIDUAL_PLOT_LOG_INTERVAL_SECONDS = 30; // Log each occupied plot every 30 seconds
     private static final int PLOT_STATUS_SUMMARY_INTERVAL_SECONDS = 2400; // Log summary every 40 minutes (2400 seconds)
     
-    private final GertenSimulationAPI api;
-    private final GertenSimulationImpl impl;
+    private final GardenSimulationAPI api;
+    private final GardenSimulationImpl impl;
     private final GridPane gardenGrid = new GridPane();
     private final Label statusLabel = new Label("Welcome to your garden! Select a seed and click a plot to plant.");
     private final Label dayLabel = new Label("Day: " + INITIAL_DAY);
@@ -95,9 +97,9 @@ public class DashboardView extends BorderPane {
         }
     }
 
-    public DashboardView(GertenSimulationAPI api) {
+    public DashboardView(GardenSimulationAPI api) {
         this.api = api;
-        this.impl = (GertenSimulationImpl) api;
+        this.impl = (GardenSimulationImpl) api;
         
         // Set background
         setStyle("-fx-background-color: linear-gradient(to bottom, #87CEEB 0%, #98D8C8 100%);");
@@ -431,14 +433,14 @@ public class DashboardView extends BorderPane {
         gardenTitleLabel.setFont(Font.font(FONT_ARIAL, FontWeight.BOLD, 20));
         gardenTitleLabel.setTextFill(Color.DARKGREEN);
         
-        // 3x9 grid (27 plots) - centered with better spacing
+        // 9x3 grid (27 plots) - centered with better spacing
         gardenGrid.setHgap(12);
         gardenGrid.setVgap(12);
         gardenGrid.setAlignment(Pos.CENTER);
         gardenGrid.setPadding(new Insets(10));
         
-        for (int r = 0; r < 3; r++) {
-            for (int c = 0; c < 9; c++) {
+        for (int r = 0; r < GRID_ROWS; r++) {
+            for (int c = 0; c < GRID_COLS; c++) {
                 gardenGrid.add(createPlot(r, c), c, r);
             }
         }
@@ -682,8 +684,8 @@ public class DashboardView extends BorderPane {
     }
 
     private void initializePlots() {
-        for (int r = 0; r < 3; r++) {
-            for (int c = 0; c < 9; c++) {
+        for (int r = 0; r < GRID_ROWS; r++) {
+            for (int c = 0; c < GRID_COLS; c++) {
                 plots.put(r + "," + c, null);
             }
         }

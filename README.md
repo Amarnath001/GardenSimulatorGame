@@ -5,7 +5,7 @@ A JavaFX-based garden simulation application that allows users to manage a virtu
 ## Overview
 
 The Garden Simulator is a comprehensive simulation system featuring:
-- Interactive JavaFX user interface with a 6-plot garden grid
+- Interactive JavaFX user interface with a 27-plot garden grid (9 rows × 3 columns)
 - 10 different plant species with unique growth requirements
 - Automated modules: Watering System, Heating System, and Pest Control
 - Sensor-based monitoring: Moisture sensors, Temperature sensors, and Parasite sensors
@@ -50,7 +50,6 @@ GardenSimulator/
 │   │   └── resources/
 │   │       ├── config/           # Garden configuration (garden.json)
 │   │       └── log-area.css      # UI stylesheet
-│   └── test/                     # Unit tests
 ├── pom.xml                       # Maven project configuration
 └── README.md                     # This file
 ```
@@ -69,7 +68,7 @@ Or download and extract the project archive to your desired location.
 
 ### 2. Install Dependencies
 
-Maven will automatically download all required dependencies (JavaFX libraries, JUnit, etc.) when you compile or run the project. No manual installation needed.
+Maven will automatically download all required dependencies (JavaFX libraries) when you compile or run the project. No manual installation needed.
 
 To verify dependencies are available:
 ```bash
@@ -180,7 +179,7 @@ java --module-path /path/to/javafx-sdk/lib --add-modules javafx.controls,javafx.
 
 ### User Interface
 
-- **6-Plot Garden Grid**: Visual representation of planting areas
+- **27-Plot Garden Grid**: Visual representation of planting areas (9 rows × 3 columns)
 - **Real-time Updates**: UI refreshes every 2 seconds with current plant status
 - **Interactive Controls**:
   - Plant seeds (select from 10 species)
@@ -269,12 +268,6 @@ This happens when running directly from IntelliJ without proper VM options.
 
 ## Development
 
-### Running Tests
-
-```bash
-mvn test
-```
-
 ### Building the Project
 
 ```bash
@@ -307,7 +300,7 @@ The system uses an `EventBus` for decoupled communication:
 
 ### API Layer
 
-The `GertenSimulationAPI` interface provides a clean separation between UI and backend:
+The `GardenSimulationAPI` interface provides a clean separation between UI and backend:
 - UI calls API methods for all operations
 - API implementation orchestrates core systems
 - All game logic resides in the backend

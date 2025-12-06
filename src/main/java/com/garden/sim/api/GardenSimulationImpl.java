@@ -14,7 +14,7 @@ import java.util.concurrent.*;
  * <p>This class is thread-safe and provides proper resource management.
  * Call {@link #shutdown()} when done to clean up resources.
  */
-public final class GertenSimulationImpl implements GertenSimulationAPI {
+public final class GardenSimulationImpl implements GardenSimulationAPI {
     private static final int RANDOM_TEMP_MIN = 50;
     private static final int RANDOM_TEMP_MAX = 80;
     private static final int RANDOM_TEMP_RANGE = RANDOM_TEMP_MAX - RANDOM_TEMP_MIN + 1;
@@ -28,7 +28,7 @@ public final class GertenSimulationImpl implements GertenSimulationAPI {
     @SuppressWarnings("unused") // Used via event bus subscription
     private final WateringSystem watering;
 
-    public GertenSimulationImpl() {
+    public GardenSimulationImpl() {
         this.bus = new EventBus();
         this.garden = new Garden(bus);
         this.clock = new Clock(bus);
