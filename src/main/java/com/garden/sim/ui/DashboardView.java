@@ -907,22 +907,69 @@ public class DashboardView extends BorderPane {
         // Update coins display
         updateCoinsDisplay();
         
-        // Sync all plots from backend
+        // Get backend plant states to check for dead/missing plants
+        Map<String, Object> states = null;
+        try {
+            states = impl.getPlantStates();
+        } catch (Exception e) {
+            Logger.log(Logger.LogLevel.WARNING, "Failed to get plant states: " + e.getMessage());
+        }
+        
+        @SuppressWarnings("unchecked")
+        List<String> backendPlantNames = states != null ? (List<String>) states.get("plants") : null;
+        @SuppressWarnings("unchecked")
+        List<Integer> backendHealthList = states != null ? (List<Integer>) states.get("health") : null;
+        @SuppressWarnings("unchecked")
+        List<Boolean> backendIsDeadList = states != null ? (List<Boolean>) states.get("isDead") : null;
+        
+        // Sync all plots from backend and remove dead/missing plants
+        List<String> plotsToRemove = new ArrayList<>();
         for (Map.Entry<String, PlotData> entry : plots.entrySet()) {
+            String plotKey = entry.getKey();
             PlotData plot = entry.getValue();
             if (plot != null) {
-                int oldHealth = plot.health;
-                int oldGrowthStage = plot.growthStage;
-                List<String> oldParasites = new ArrayList<>(plot.parasites);
+                // Check if plant is dead or missing from backend
+                boolean shouldRemove = false;
                 
-                syncPlotFromBackend(plot);
+                if (backendPlantNames == null || !backendPlantNames.contains(plot.plantName)) {
+                    // Plant no longer exists in backend (was removed)
+                    shouldRemove = true;
+                } else {
+                    int idx = backendPlantNames.indexOf(plot.plantName);
+                    if (idx >= 0) {
+                        // Check if plant is dead
+                        if (backendIsDeadList != null && idx < backendIsDeadList.size() && backendIsDeadList.get(idx)) {
+                            shouldRemove = true;
+                        } else if (backendHealthList != null && idx < backendHealthList.size() && backendHealthList.get(idx) <= 0) {
+                            shouldRemove = true;
+                        }
+                    }
+                }
                 
-                // Check if anything changed
-                boolean parasitesChanged = !plot.parasites.equals(oldParasites);
-                if (plot.health != oldHealth || plot.growthStage != oldGrowthStage || parasitesChanged) {
+                if (shouldRemove) {
+                    plotsToRemove.add(plotKey);
                     needsRefresh = true;
+                    Logger.log(Logger.LogLevel.INFO, "Removing dead/missing plant from plot " + plotKey + ": " + plot.plantName);
+                } else {
+                    // Sync plot data from backend
+                    int oldHealth = plot.health;
+                    int oldGrowthStage = plot.growthStage;
+                    List<String> oldParasites = new ArrayList<>(plot.parasites);
+                    
+                    syncPlotFromBackend(plot);
+                    
+                    // Check if anything changed
+                    boolean parasitesChanged = !plot.parasites.equals(oldParasites);
+                    if (plot.health != oldHealth || plot.growthStage != oldGrowthStage || parasitesChanged) {
+                        needsRefresh = true;
+                    }
                 }
             }
+        }
+        
+        // Remove dead/missing plants from plots
+        for (String plotKey : plotsToRemove) {
+            plots.remove(plotKey);
         }
         
         if (needsRefresh) {

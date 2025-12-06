@@ -377,6 +377,24 @@ public class Garden {
         // modules subscribe via constructors
     }
 
+    /**
+     * Handles cleanup for a dead plant that has been removed from the list.
+     * Unassigns its plot and notifies modules.
+     * Note: The plant must already be removed from the plants list before calling this.
+     * @param plant The dead plant that was removed
+     */
+    private void cleanupDeadPlant(Plant plant) {
+        if (plant == null) {
+            return;
+        }
+        
+        // Unassign plot
+        plotAssignments.entrySet().removeIf(e -> e.getValue().equals(plant.getName()));
+        // Notify modules about plant removal (for sensor/sprinkler cleanup)
+        bus.publish(EventBus.Topic.PLANT_REMOVED, plant);
+        Logger.log(Logger.LogLevel.WARNING, "Removed dead plant: " + plant.getName() + " from garden");
+    }
+    
     // Event handlers
     public void dayTick() {
         // Random temperature generation is handled by API layer to go through heating system
@@ -385,19 +403,44 @@ public class Garden {
         int lowMoistureCount = 0;
         int infestedCount = 0;
         int stressedCount = 0;
+        int removedCount = 0;
         
-        for (Plant p : plants) {
+        // Use iterator to safely remove plants while iterating
+        Iterator<Plant> iterator = plants.iterator();
+        while (iterator.hasNext()) {
+            Plant p = iterator.next();
             try {
                 // Advance growth
                 p.advanceDay();
                 
+                // Apply water need - check if plant dies immediately
                 p.applyDailyWaterNeed();
+                if (p.isDead()) {
+                    iterator.remove();
+                    cleanupDeadPlant(p);
+                    removedCount++;
+                    continue; // Skip remaining operations for this plant
+                }
                 if (p.getSoilMoisture() < LOW_MOISTURE_THRESHOLD) lowMoistureCount++;
                 
+                // Apply parasite damage - check if plant dies immediately
                 if (!p.getParasites().isEmpty()) infestedCount++;
                 p.dailyParasiteDamage();
+                if (p.isDead()) {
+                    iterator.remove();
+                    cleanupDeadPlant(p);
+                    removedCount++;
+                    continue; // Skip remaining operations for this plant
+                }
                 
+                // Apply temperature stress - check if plant dies immediately
                 p.setTemperature(lastTemperatureF);
+                if (p.isDead()) {
+                    iterator.remove();
+                    cleanupDeadPlant(p);
+                    removedCount++;
+                    continue; // Skip remaining operations for this plant
+                }
                 if (p.getTemperatureStress() > TEMPERATURE_STRESS_THRESHOLD) stressedCount++;
             } catch (Throwable t) {
                 Logger.log(Logger.LogLevel.ERROR, "dayTick plant error for " + p.getName() + ": " + t.getMessage());
@@ -407,11 +450,11 @@ public class Garden {
         int deadAfter = (int) plants.stream().filter(Plant::isDead).count();
         int newlyDead = deadAfter - deadBefore;
         
-        Logger.log(Logger.LogLevel.INFO, "DayTick applied to " + plants.size() + " plants | " +
+        Logger.log(Logger.LogLevel.INFO, "DayTick applied to " + (plants.size() + removedCount) + " plants | " +
                  "Low moisture: " + lowMoistureCount + " | " +
                  "Infested: " + infestedCount + " | " +
                  "Temp stressed: " + stressedCount + " | " +
-                 "Newly dead: " + newlyDead);
+                 "Newly dead: " + newlyDead + " (removed immediately: " + removedCount + ")");
     }
     
     /**
