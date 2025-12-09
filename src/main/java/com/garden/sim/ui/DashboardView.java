@@ -527,11 +527,24 @@ public class DashboardView extends BorderPane {
             nameLabel.setFont(Font.font(FONT_ARIAL, FontWeight.BOLD, 8));
             nameLabel.setTextFill(Color.WHITE);
             
-            // Health indicator
-            String healthColor = plot.health > 60 ? "green" : plot.health > 30 ? "orange" : "red";
-            Label healthLabel = new Label("❤ " + plot.health + "%");
-            healthLabel.setFont(Font.font(FONT_ARIAL, FontWeight.BOLD, 10));
-            healthLabel.setTextFill(Color.web(healthColor));
+            // Health indicator - enhanced visibility with better contrast
+            Color healthColor;
+            String healthText;
+            if (plot.health > 60) {
+                healthColor = Color.rgb(0, 200, 0); // Bright green
+                healthText = "❤ " + plot.health + "%";
+            } else if (plot.health > 30) {
+                healthColor = Color.rgb(255, 165, 0); // Bright orange
+                healthText = "⚠ " + plot.health + "%";
+            } else {
+                healthColor = Color.rgb(255, 50, 50); // Bright red
+                healthText = "⚠ " + plot.health + "%";
+            }
+            Label healthLabel = new Label(healthText);
+            healthLabel.setFont(Font.font(FONT_ARIAL, FontWeight.BOLD, 12)); // Increased from 10 to 12
+            healthLabel.setTextFill(healthColor);
+            // Add white stroke for better contrast against dark background
+            healthLabel.setStyle("-fx-effect: dropshadow(one-pass-box, white, 1, 1, 0, 0);");
             
             // Parasite emojis - show all parasites that have infected this plant
             if (!plot.parasites.isEmpty()) {
