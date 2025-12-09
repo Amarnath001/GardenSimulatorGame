@@ -81,7 +81,6 @@ public class PestControl {
                 
                 for (String parasite : parasites) {
                     int eff = 50 + rnd.nextInt(51); // 50..100
-                    int before = p.getParasites().size();
                     boolean wasCured = p.getParasites().contains(parasite);
                     p.cure(parasite, eff);
                     boolean isCured = !p.getParasites().contains(parasite);

@@ -43,4 +43,7 @@ public interface GardenSimulationAPI {
 
     /** Dump final state to log/UI; called after 24 simulated days by grader. */
     void getState();
+    
+    /** Checks if a plant name belongs to a config-loaded plant (for filtering UI logs). */
+    boolean isConfigPlant(String plantName);
 }

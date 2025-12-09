@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Thread-safe implementation using AtomicInteger for day counter.
  */
 public class Clock {
-    private static final long DEFAULT_PERIOD_SECONDS = 3600; // 1 real hour = 1 simulated day
+    private static final long DEFAULT_PERIOD_SECONDS = 10; // 1 real hour = 1 simulated day
     
     private final ScheduledExecutorService exec = Executors.newSingleThreadScheduledExecutor();
     private final EventBus bus;

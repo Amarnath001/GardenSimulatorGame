@@ -40,7 +40,8 @@ public class Plant {
         this.name = name;
         this.species = species;
         // Set random initial health between INITIAL_HEALTH_MIN-INITIAL_HEALTH_MAX%
-        this.health = INITIAL_HEALTH_MIN + (int)(Math.random() * INITIAL_HEALTH_RANGE);
+        java.util.Random random = new java.util.Random();
+        this.health = INITIAL_HEALTH_MIN + random.nextInt(INITIAL_HEALTH_RANGE);
         
         // Get days to harvest from PlantType
         PlantType plantType = PlantType.fromString(species.getName());
@@ -110,21 +111,51 @@ public class Plant {
     }
 
     private static final int HEALTH_DAMAGE_WHEN_DRY = 5;
-    private static final int NATURAL_MOISTURE_DECAY = 20; // Natural evaporation/decay per day
+    private static final int NATURAL_MOISTURE_DECAY = 5; // Natural evaporation/decay per day
+    private static final int HEALTH_RECOVERY_RATE = 2; // Health recovery per day when conditions are good
+    private static final int MOISTURE_THRESHOLD_FOR_RECOVERY = 40; // Minimum moisture for health recovery
+    private static final int MAX_HEALTH = 100; // Maximum health cap
     
     /**
      * Applies daily water consumption and natural moisture decay.
-     * Moisture decreases from both plant water needs and natural evaporation.
+     * Total daily moisture loss is 2% (natural evaporation only).
+     * Plant water requirements are used for other calculations but don't directly reduce moisture.
      */
     public void applyDailyWaterNeed() {
-        // Natural moisture decay (evaporation) happens regardless of plant
+        // Total daily moisture decay is 2% (natural evaporation)
         soilMoisture = Math.max(0, soilMoisture - NATURAL_MOISTURE_DECAY);
         
-        // Plant water consumption
-        soilMoisture = Math.max(0, soilMoisture - species.getDailyWaterNeed());
+        // Note: Plant water requirements are still tracked for API/getPlants() but
+        // don't directly reduce moisture here - only natural decay does
         
         if (soilMoisture == 0) {
             health = Math.max(0, health - HEALTH_DAMAGE_WHEN_DRY);
+        }
+    }
+    
+    /**
+     * Recovers plant health when conditions are favorable.
+     * Health recovers when:
+     * - Moisture is adequate (above threshold)
+     * - Temperature stress is low (within optimal range)
+     * - No parasites are present
+     * 
+     * Recovery is gradual to prevent instant healing.
+     */
+    public void recoverHealth() {
+        // Only recover if plant is alive and not at max health
+        if (isDead() || health >= MAX_HEALTH) {
+            return;
+        }
+        
+        // Check conditions for recovery
+        boolean hasAdequateMoisture = soilMoisture >= MOISTURE_THRESHOLD_FOR_RECOVERY;
+        boolean hasLowTempStress = temperatureStress <= TEMPERATURE_STRESS_DAMAGE_THRESHOLD / 2; // Half of damage threshold
+        boolean hasNoParasites = parasites.isEmpty();
+        
+        // All conditions must be met for recovery
+        if (hasAdequateMoisture && hasLowTempStress && hasNoParasites) {
+            health = Math.min(MAX_HEALTH, health + HEALTH_RECOVERY_RATE);
         }
     }
 
@@ -137,7 +168,8 @@ public class Plant {
     private static final int TEMPERATURE_STRESS_DAMAGE = 3;
     
     public void setTemperature(int f) {
-        int min = species.getTempMin(), max = species.getTempMax();
+        int min = species.getTempMin();
+        int max = species.getTempMax();
         if (f < min) temperatureStress += (min - f);
         else if (f > max) temperatureStress += (f - max);
         else temperatureStress = Math.max(0, temperatureStress - TEMPERATURE_STRESS_RECOVERY_RATE);
@@ -168,8 +200,11 @@ public class Plant {
         }
         if (efficacy >= EFFICACY_THRESHOLD_GUARANTEED) {
             parasites.remove(parasite);
-        } else if (efficacy >= EFFICACY_THRESHOLD_CHANCE && Math.random() < CURE_SUCCESS_CHANCE) {
-            parasites.remove(parasite);
+        } else if (efficacy >= EFFICACY_THRESHOLD_CHANCE) {
+            java.util.Random random = new java.util.Random();
+            if (random.nextDouble() < CURE_SUCCESS_CHANCE) {
+                parasites.remove(parasite);
+            }
         }
     }
 

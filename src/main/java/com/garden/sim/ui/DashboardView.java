@@ -26,13 +26,13 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
 /**
- * Stardew Valley-style 2D garden game with 27 planting spots (9 rows x 3 columns).
+ * Stardew Valley-style 2D garden game with 27 planting spots (3 rows x 9 columns).
  * Features: Plant seeds, watch them grow, harvest, manage resources.
  */
 public class DashboardView extends BorderPane {
     // Constants
-    private static final int GRID_ROWS = 9;
-    private static final int GRID_COLS = 3;
+    private static final int GRID_ROWS = 3;
+    private static final int GRID_COLS = 9;
     private static final String FONT_ARIAL = "Arial";
     private static final String SEED_TOMATO = "Tomato";
     private static final String SEED_ROSE = "Rose";
@@ -88,7 +88,6 @@ public class DashboardView extends BorderPane {
         int daysPlanted = 0; // Synced from backend
         int daysToHarvest;  // Plant-specific harvest time
         List<String> parasites = new ArrayList<>(); // Synced from backend - list of parasite names
-        boolean readyToHarvest = false; // Synced from backend
         
         PlotData(String plantName, String species, int daysToHarvest) {
             this.plantName = plantName;
@@ -422,9 +421,9 @@ public class DashboardView extends BorderPane {
     }
 
     private Node buildGameArea() {
-        VBox gameArea = new VBox(20);
+        VBox gameArea = new VBox(10);
         gameArea.setAlignment(Pos.CENTER);
-        gameArea.setPadding(new Insets(30));
+        gameArea.setPadding(new Insets(15));
         VBox.setVgrow(gameArea, Priority.ALWAYS);
         HBox.setHgrow(gameArea, Priority.ALWAYS);
         
@@ -433,11 +432,11 @@ public class DashboardView extends BorderPane {
         gardenTitleLabel.setFont(Font.font(FONT_ARIAL, FontWeight.BOLD, 20));
         gardenTitleLabel.setTextFill(Color.DARKGREEN);
         
-        // 9x3 grid (27 plots) - centered with better spacing
-        gardenGrid.setHgap(12);
-        gardenGrid.setVgap(12);
+        // 3x9 grid (27 plots) - compact spacing to fit horizontally on one screen
+        gardenGrid.setHgap(6);
+        gardenGrid.setVgap(6);
         gardenGrid.setAlignment(Pos.CENTER);
-        gardenGrid.setPadding(new Insets(10));
+        gardenGrid.setPadding(new Insets(5));
         
         for (int r = 0; r < GRID_ROWS; r++) {
             for (int c = 0; c < GRID_COLS; c++) {
@@ -491,12 +490,12 @@ public class DashboardView extends BorderPane {
         PlotData plot = plots.get(key);
         
         StackPane plotPane = new StackPane();
-        plotPane.setPrefSize(130, 130);
-        plotPane.setMinSize(130, 130);
-        plotPane.setMaxSize(130, 130);
+        plotPane.setPrefSize(90, 90);
+        plotPane.setMinSize(90, 90);
+        plotPane.setMaxSize(90, 90);
         
         // Soil background
-        Rectangle soil = new Rectangle(130, 130);
+        Rectangle soil = new Rectangle(90, 90);
         if (plot != null && plot.health < 30) {
             // Dead/dying plant - brownish
             soil.setFill(Color.rgb(101, 67, 33));
@@ -509,29 +508,29 @@ public class DashboardView extends BorderPane {
         soil.setStroke(Color.rgb(78, 59, 37));
         soil.setStrokeWidth(3);
         
-        VBox content = new VBox(5);
+        VBox content = new VBox(2);
         content.setAlignment(Pos.CENTER);
         
         if (plot == null) {
             // Empty plot
             Label emptyLabel = new Label("Empty");
-            emptyLabel.setFont(Font.font(FONT_ARIAL, 12));
+            emptyLabel.setFont(Font.font(FONT_ARIAL, 9));
             emptyLabel.setTextFill(Color.WHITE);
             content.getChildren().add(emptyLabel);
         } else {
             // Plant visualization
             String plantEmoji = getPlantEmoji(plot.species, plot.growthStage);
             Label plantLabel = new Label(plantEmoji);
-            plantLabel.setFont(Font.font(FONT_ARIAL, 32));
+            plantLabel.setFont(Font.font(FONT_ARIAL, 20));
             
             Label nameLabel = new Label(plot.plantName);
-            nameLabel.setFont(Font.font(FONT_ARIAL, FontWeight.BOLD, 10));
+            nameLabel.setFont(Font.font(FONT_ARIAL, FontWeight.BOLD, 8));
             nameLabel.setTextFill(Color.WHITE);
             
-            // Health indicator - bigger and more prominent
+            // Health indicator
             String healthColor = plot.health > 60 ? "green" : plot.health > 30 ? "orange" : "red";
             Label healthLabel = new Label("❤ " + plot.health + "%");
-            healthLabel.setFont(Font.font(FONT_ARIAL, FontWeight.BOLD, 16)); // Increased from 9 to 16, made bold
+            healthLabel.setFont(Font.font(FONT_ARIAL, FontWeight.BOLD, 10));
             healthLabel.setTextFill(Color.web(healthColor));
             
             // Parasite emojis - show all parasites that have infected this plant
@@ -541,7 +540,7 @@ public class DashboardView extends BorderPane {
                     parasiteEmojis.append(getParasiteEmoji(parasite));
                 }
                 Label parasiteLabel = new Label(parasiteEmojis.toString());
-                parasiteLabel.setFont(Font.font(FONT_ARIAL, 16));
+                parasiteLabel.setFont(Font.font(FONT_ARIAL, 12));
                 parasiteLabel.setTextFill(Color.RED);
                 content.getChildren().add(parasiteLabel);
             }
@@ -884,9 +883,7 @@ public class DashboardView extends BorderPane {
             if (growthStageList != null && idx < growthStageList.size()) {
                 plot.growthStage = growthStageList.get(idx);
             }
-            if (readyToHarvestList != null && idx < readyToHarvestList.size()) {
-                plot.readyToHarvest = readyToHarvestList.get(idx);
-            }
+            // readyToHarvest is calculated from daysPlanted and daysToHarvest, not synced from backend
         } catch (Exception e) {
             // Ignore sync errors
         }
@@ -979,8 +976,8 @@ public class DashboardView extends BorderPane {
 
     private void refreshGarden() {
         gardenGrid.getChildren().clear();
-        for (int r = 0; r < 3; r++) {
-            for (int c = 0; c < 9; c++) {
+        for (int r = 0; r < GRID_ROWS; r++) {
+            for (int c = 0; c < GRID_COLS; c++) {
                 gardenGrid.add(createPlot(r, c), c, r);
             }
         }
@@ -1034,10 +1031,48 @@ public class DashboardView extends BorderPane {
             });
         });
         
-        // Subscribe to PARASITE events
-        bus.subscribe(EventBus.Topic.PARASITE, (payload) -> {
+        // Subscribe to PARASITE events - filter out generic parasite events (config plants handled separately)
+        // Note: PARASITE events don't specify which plant, so we skip them to avoid confusion
+        // Individual plant parasite logs are handled in infectPlotWithParasite()
+        
+        // Subscribe to SPRINKLER_ACTIVATED events
+        bus.subscribe(EventBus.Topic.SPRINKLER_ACTIVATED, (payload) -> {
             Platform.runLater(() -> {
-                addLogEntry("Parasite detected: " + payload);
+                @SuppressWarnings("unchecked")
+                Map<String, Object> data = (Map<String, Object>) payload;
+                if (data.containsKey("summary")) {
+                    // Skip summary messages - individual plant sprinkler activations are more useful
+                    // and config plants are already filtered out above
+                } else if (data.containsKey("plant")) {
+                    // Individual sprinkler activation - filter out config plants
+                    String plantName = (String) data.get("plant");
+                    if (!api.isConfigPlant(plantName)) {
+                        int before = (Integer) data.get("before");
+                        int after = (Integer) data.get("after");
+                        addLogEntry("Sprinkler activated: " + plantName + " (moisture: " + before + "% -> " + after + "%)");
+                    }
+                }
+            });
+        });
+        
+        // Subscribe to PLANT_DIED events - filter out config plants
+        bus.subscribe(EventBus.Topic.PLANT_DIED, (payload) -> {
+            Platform.runLater(() -> {
+                String deathMessage = (String) payload;
+                // Extract plant name from message (format: "Plant <name> has died...")
+                if (deathMessage.startsWith("Plant ")) {
+                    int endIndex = deathMessage.indexOf(" has died");
+                    if (endIndex > 6) {
+                        String plantName = deathMessage.substring(6, endIndex);
+                        if (!api.isConfigPlant(plantName)) {
+                            addLogEntry(deathMessage);
+                        }
+                    } else {
+                        addLogEntry(deathMessage); // Fallback if format is unexpected
+                    }
+                } else {
+                    addLogEntry(deathMessage); // Fallback if format is unexpected
+                }
             });
         });
     }
@@ -1298,9 +1333,9 @@ public class DashboardView extends BorderPane {
         
         // Create grid for plant tiles
         GridPane grid = new GridPane();
-        grid.setHgap(20);
-        grid.setVgap(20);
-        grid.setPadding(new Insets(25));
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(15));
         grid.setAlignment(Pos.CENTER);
         
         // Store selected plant
@@ -1310,11 +1345,11 @@ public class DashboardView extends BorderPane {
         for (int i = 0; i < plants.length; i++) {
             PlantInfo plant = plants[i];
             
-            VBox tile = new VBox(15);
+            VBox tile = new VBox(8);
             tile.setAlignment(Pos.CENTER);
-            tile.setPadding(new Insets(20));
-            tile.setPrefWidth(200);
-            tile.setPrefHeight(220);
+            tile.setPadding(new Insets(12));
+            tile.setPrefWidth(140);
+            tile.setPrefHeight(160);
             tile.setStyle(
                 "-fx-background-color: #F5F5F5; " +
                 "-fx-border-color: #CCCCCC; " +
@@ -1325,20 +1360,20 @@ public class DashboardView extends BorderPane {
             
             // Emoji (big)
             Label emojiLabel = new Label(plant.emoji);
-            emojiLabel.setFont(Font.font(FONT_ARIAL, 64));
+            emojiLabel.setFont(Font.font(FONT_ARIAL, 40));
             
             // Name
             Label nameLabel = new Label(plant.displayName);
-            nameLabel.setFont(Font.font(FONT_ARIAL, FontWeight.BOLD, 18));
+            nameLabel.setFont(Font.font(FONT_ARIAL, FontWeight.BOLD, 14));
             nameLabel.setTextFill(Color.DARKGREEN);
             
             // Description/Info
             Label infoLabel = new Label(plant.description);
-            infoLabel.setFont(Font.font(FONT_ARIAL, 14));
+            infoLabel.setFont(Font.font(FONT_ARIAL, 11));
             infoLabel.setTextFill(Color.DARKGRAY);
             infoLabel.setWrapText(true);
             infoLabel.setAlignment(Pos.CENTER);
-            infoLabel.setMaxWidth(180);
+            infoLabel.setMaxWidth(120);
             
             tile.getChildren().addAll(emojiLabel, nameLabel, infoLabel);
             
@@ -1405,18 +1440,27 @@ public class DashboardView extends BorderPane {
             
             tile.setCursor(javafx.scene.Cursor.HAND);
             
-            // Add to grid (3 columns for better layout with 10 plants: 3x4 grid)
-            grid.add(tile, i % 3, i / 3);
+            // Add to grid (5 columns for better horizontal layout with 10 plants: 5x2 grid)
+            grid.add(tile, i % 5, i / 5);
         }
         
+        // Create scrollable content
+        ScrollPane scrollPane = new ScrollPane(grid);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setFitToHeight(true);
+        scrollPane.setPrefViewportWidth(750);
+        scrollPane.setPrefViewportHeight(400);
+        scrollPane.setStyle("-fx-background: white;");
+        
         // Create dialog content
-        VBox content = new VBox(20);
+        VBox content = new VBox(10);
         content.setAlignment(Pos.CENTER);
-        content.setPadding(new Insets(20));
-        content.getChildren().add(grid);
+        content.setPadding(new Insets(10));
+        content.getChildren().add(scrollPane);
         
         dialog.getDialogPane().setContent(content);
-        dialog.getDialogPane().setPrefSize(700, 800); // Larger dialog to fit 10 plants in 3 columns
+        dialog.getDialogPane().setPrefSize(780, 500); // Compact dialog size
+        dialog.getDialogPane().setMaxSize(780, 600); // Max size to prevent overflow
         
         // Add OK and Cancel buttons
         ButtonType okButtonType = new ButtonType("OK", ButtonBar.ButtonData.OK_DONE);
@@ -1683,6 +1727,12 @@ public class DashboardView extends BorderPane {
         if (plot == null) {
             statusLabel.setText("Cannot infect empty plot! Plant a seed first.");
             addLogEntry("Parasite attack: Nothing to infect at plot (" + row + "," + col + ") - plot is empty");
+            return;
+        }
+        
+        // Filter out logs for config plants
+        if (api.isConfigPlant(plot.plantName)) {
+            statusLabel.setText("Cannot infect automated test plants.");
             return;
         }
         

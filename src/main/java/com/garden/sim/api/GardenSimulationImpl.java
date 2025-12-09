@@ -49,8 +49,6 @@ public final class GardenSimulationImpl implements GardenSimulationAPI {
         safe(() -> {
             garden.seedFromConfig("config/garden.json");
             clock.start();
-            // Dev mode: faster ticks. Uncomment to speed up: 1 day per 5 sec.
-            // clock.setScaleSecondsPerDay(5);
             svc.scheduleAtFixedRate(() -> safe(() -> pest.dailySweep()), 1, 1, TimeUnit.HOURS);
             // Random parasite attacks: check every 5 minutes (300 seconds) with 15% chance
             svc.scheduleAtFixedRate(() -> safe(() -> garden.checkRandomParasiteAttack()), 300, 300, TimeUnit.SECONDS);
@@ -150,6 +148,11 @@ public final class GardenSimulationImpl implements GardenSimulationAPI {
     }
 
     @Override public void getState() { safe(() -> garden.reportState()); }
+    
+    @Override
+    public boolean isConfigPlant(String plantName) {
+        return safe(() -> garden.isConfigPlant(plantName), false);
+    }
     
     /** Manually triggers pest control to treat all infested plants. */
     public void triggerPestControl() {

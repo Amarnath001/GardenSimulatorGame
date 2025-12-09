@@ -10,7 +10,7 @@ import java.util.function.Consumer;
  * Provides thread-safe event publishing and subscription mechanism.
  */
 public class EventBus {
-    public enum Topic { DAY_TICK, RAIN, TEMPERATURE, PARASITE, PLANT_ADDED, PLANT_REMOVED, HEATING_ACTIVATED }
+    public enum Topic { DAY_TICK, DAY_TICK_COMPLETE, RAIN, TEMPERATURE, PARASITE, PLANT_ADDED, PLANT_REMOVED, PLANT_DIED, HEATING_ACTIVATED, SPRINKLER_ACTIVATED }
 
     private final Map<Topic, List<Consumer<Object>>> listeners = new ConcurrentHashMap<>();
 

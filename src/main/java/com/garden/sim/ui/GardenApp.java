@@ -22,6 +22,7 @@ public class GardenApp extends Application {
             var view = new DashboardView(api);
             stage.setTitle("Computerized Garden Simulator");
             stage.setScene(new Scene(view, WINDOW_WIDTH, WINDOW_HEIGHT));
+            stage.setMaximized(true); // Launch in fullscreen (maximized)
             stage.show();
             
             // Ask for user's name after stage is shown

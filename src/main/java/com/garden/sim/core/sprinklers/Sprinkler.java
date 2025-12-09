@@ -10,7 +10,7 @@ import com.garden.sim.core.logger.Logger;
 public class Sprinkler {
     private final String name;
     private final Plant targetPlant;
-    private static final int WATER_AMOUNT = 10;
+    private static final int WATER_AMOUNT = 10; // Water amount per activation
     private boolean isActive = true;
     
     public Sprinkler(String name, Plant targetPlant) {

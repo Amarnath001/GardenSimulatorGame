@@ -26,8 +26,14 @@ public class WateringSystem {
         // Initialize sensors and sprinklers for existing plants
         initializeSensorsAndSprinklers();
         
-        bus.subscribe(EventBus.Topic.DAY_TICK, e -> onDayTick());
-        bus.subscribe(EventBus.Topic.RAIN, e -> Logger.log(Logger.LogLevel.INFO, "External rain event observed by WateringSystem"));
+        // Subscribe to DAY_TICK_COMPLETE instead of DAY_TICK to ensure we run AFTER moisture decay
+        bus.subscribe(EventBus.Topic.DAY_TICK_COMPLETE, e -> onDayTick());
+        // Also check after rain events to see if more watering is needed
+        bus.subscribe(EventBus.Topic.RAIN, e -> {
+            Logger.log(Logger.LogLevel.INFO, "External rain event observed by WateringSystem");
+            // Check if plants still need watering after rain (in case rain wasn't enough)
+            checkAndWater();
+        });
         bus.subscribe(EventBus.Topic.PLANT_ADDED, e -> {
             if (e instanceof Plant) {
                 addPlant((Plant) e);
@@ -73,8 +79,17 @@ public class WateringSystem {
     }
 
     private void onDayTick() {
+        checkAndWater();
+    }
+    
+    /**
+     * Checks all plants and activates sprinklers for those with low moisture.
+     * This method can be called from day tick or after rain events.
+     */
+    private void checkAndWater() {
         int watered = 0;
         int totalChecked = 0;
+        int lowMoistureCount = 0;
         
         // Update sensors and sprinklers for any new plants
         Set<Plant> currentPlants = new HashSet<>(garden.getPlantsList());
@@ -98,18 +113,41 @@ public class WateringSystem {
             }
             
             totalChecked++;
+            int moisture = sensor.readValue();
             
             // Use sensor to check if watering is needed
             if (sensor.isMoistureLow()) {
+                lowMoistureCount++;
                 Sprinkler sprinkler = sprinklers.get(plant);
                 if (sprinkler != null && sprinkler.activate()) {
                     watered++;
+                    int afterMoisture = plant.getSoilMoisture();
+                    Logger.log(Logger.LogLevel.INFO, "WateringSystem: Sprinkler activated for " + plant.getName() + 
+                             " (moisture was " + moisture + "%, threshold: " + sensor.getLowMoistureThreshold() + "%)");
+                    // Publish event for UI to display
+                    bus.publish(EventBus.Topic.SPRINKLER_ACTIVATED, Map.of(
+                        "plant", plant.getName(),
+                        "before", moisture,
+                        "after", afterMoisture
+                    ));
+                } else {
+                    Logger.log(Logger.LogLevel.WARNING, "WateringSystem: Failed to activate sprinkler for " + plant.getName());
                 }
             }
         }
         
         if (watered > 0) {
-            Logger.log(Logger.LogLevel.INFO, "WateringSystem: Activated " + watered + " sprinklers to irrigate " + watered + " of " + totalChecked + " plants");
+            String summary = "WateringSystem: Activated " + watered + " sprinkler(s) to irrigate " + watered + " of " + totalChecked + " plant(s)";
+            Logger.log(Logger.LogLevel.INFO, summary);
+            // Publish summary for UI (only if we watered multiple plants, individual ones already published)
+            if (watered > 1) {
+                bus.publish(EventBus.Topic.SPRINKLER_ACTIVATED, Map.of("summary", summary, "count", watered));
+            }
+        } else if (lowMoistureCount > 0) {
+            Logger.log(Logger.LogLevel.WARNING, "WateringSystem: Detected " + lowMoistureCount + " plant(s) with low moisture but no sprinklers activated");
+        } else if (totalChecked > 0) {
+            Logger.log(Logger.LogLevel.DEBUG, "WateringSystem: Checked " + totalChecked + " plant(s) - all have adequate moisture (>= " + 
+                     (sensors.isEmpty() ? 50 : sensors.values().iterator().next().getLowMoistureThreshold()) + "%)");
         }
     }
 }

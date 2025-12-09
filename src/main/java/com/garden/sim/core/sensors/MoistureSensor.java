@@ -9,7 +9,7 @@ import com.garden.sim.core.Plant;
 public class MoistureSensor implements Sensor {
     private final Plant plant;
     private final String name;
-    private static final int LOW_MOISTURE_THRESHOLD = 30;
+    private static final int LOW_MOISTURE_THRESHOLD = 50; // Increased from 30 to trigger earlier
     
     public MoistureSensor(Plant plant) {
         this.plant = plant;

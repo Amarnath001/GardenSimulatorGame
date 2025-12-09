@@ -6,7 +6,6 @@ import com.garden.sim.core.logger.Logger;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.stream.Collectors;
 import com.garden.sim.core.orgjson.*;
 
 /**
@@ -24,6 +23,7 @@ public class Garden {
     @SuppressWarnings("unused") // Used via event bus subscription
     private final EventBus bus;
     private final List<Plant> plants = new ArrayList<>();
+    private final Random random = new Random();
     private int lastTemperatureF = DEFAULT_TEMPERATURE_F;
     
     // Species definitions loaded from config
@@ -32,6 +32,7 @@ public class Garden {
     // Game state
     private int coins = INITIAL_COINS;
     private final Map<String, String> plotAssignments = new HashMap<>(); // "row,col" -> plantName
+    private final Set<String> configPlantNames = new HashSet<>(); // Track plants loaded from config (to filter UI logs)
 
     /**
      * Creates a new Garden instance.
@@ -108,7 +109,9 @@ public class Garden {
                             base.getTempMax(),
                             toList(p.optJSONArray("parasites"))
                         );
+                        String plantName = p.getString("name");
                         plants.add(plant);
+                        configPlantNames.add(plantName); // Track config plant names
                     } else {
                         // Fallback for unknown species
                         Species withWaterNeed = new Species(
@@ -118,7 +121,9 @@ public class Garden {
                             base.getTempMax(),
                             toList(p.optJSONArray("parasites"))
                         );
-                        plants.add(new Plant(p.getString("name"), withWaterNeed));
+                        String plantName = p.getString("name");
+                        plants.add(new Plant(plantName, withWaterNeed));
+                        configPlantNames.add(plantName); // Track config plant names
                     }
                 }
             }
@@ -138,6 +143,14 @@ public class Garden {
     }
 
     public List<Plant> getPlantsList() { return Collections.unmodifiableList(plants); }
+    
+    /**
+     * Checks if a plant name belongs to a config-loaded plant.
+     * Used to filter UI logs for automated test plants.
+     */
+    public boolean isConfigPlant(String plantName) {
+        return configPlantNames.contains(plantName);
+    }
     
     /**
      * Adds a new plant to the garden.
@@ -220,25 +233,25 @@ public class Garden {
      */
     public Map<String, Object> exportPlantDefs() {
         // Return existing plants (if any from config)
-        List<String> names = plants.stream().map(Plant::getName).collect(Collectors.toList());
-        List<Integer> water = plants.stream().map(p -> p.getSpecies().getDailyWaterNeed()).collect(Collectors.toList());
+        List<String> names = plants.stream().map(Plant::getName).toList();
+        List<Integer> water = plants.stream().map(p -> p.getSpecies().getDailyWaterNeed()).toList();
         List<List<String>> parasites = plants.stream()
-            .map(p -> new ArrayList<>(p.getSpecies().getParasiteVulns())).collect(Collectors.toList());
+            .map(p -> List.copyOf(p.getSpecies().getParasiteVulns())).toList();
         
         // Also return species information for UI to use when planting
         List<String> speciesNames = new ArrayList<>(speciesByName.keySet());
         List<Integer> speciesWaterDefaults = speciesNames.stream()
             .map(s -> speciesByName.get(s).getDailyWaterNeed())
-            .collect(Collectors.toList());
+            .toList();
         List<List<String>> speciesParasites = speciesNames.stream()
-            .map(s -> new ArrayList<>(speciesByName.get(s).getParasiteVulns()))
-            .collect(Collectors.toList());
+            .map(s -> List.copyOf(speciesByName.get(s).getParasiteVulns()))
+            .toList();
         List<Integer> speciesTempMin = speciesNames.stream()
             .map(s -> speciesByName.get(s).getTempMin())
-            .collect(Collectors.toList());
+            .toList();
         List<Integer> speciesTempMax = speciesNames.stream()
             .map(s -> speciesByName.get(s).getTempMax())
-            .collect(Collectors.toList());
+            .toList();
         
         Map<String, Object> result = new HashMap<>();
         result.put("plants", names);
@@ -382,8 +395,9 @@ public class Garden {
      * Unassigns its plot and notifies modules.
      * Note: The plant must already be removed from the plants list before calling this.
      * @param plant The dead plant that was removed
+     * @param causeOfDeath The reason why the plant died (e.g., "drought", "parasites", "temperature stress")
      */
-    private void cleanupDeadPlant(Plant plant) {
+    private void cleanupDeadPlant(Plant plant, String causeOfDeath) {
         if (plant == null) {
             return;
         }
@@ -392,7 +406,15 @@ public class Garden {
         plotAssignments.entrySet().removeIf(e -> e.getValue().equals(plant.getName()));
         // Notify modules about plant removal (for sensor/sprinkler cleanup)
         bus.publish(EventBus.Topic.PLANT_REMOVED, plant);
-        Logger.log(Logger.LogLevel.WARNING, "Removed dead plant: " + plant.getName() + " from garden");
+        
+        // Log plant death with cause
+        String deathMessage = "Plant " + plant.getName() + " has died";
+        if (causeOfDeath != null && !causeOfDeath.isEmpty()) {
+            deathMessage += " due to " + causeOfDeath;
+        }
+        Logger.log(Logger.LogLevel.WARNING, deathMessage);
+        // Publish event for UI to display
+        bus.publish(EventBus.Topic.PLANT_DIED, deathMessage);
     }
     
     // Event handlers
@@ -417,7 +439,8 @@ public class Garden {
                 p.applyDailyWaterNeed();
                 if (p.isDead()) {
                     iterator.remove();
-                    cleanupDeadPlant(p);
+                    String cause = p.getSoilMoisture() == 0 ? "drought (insufficient water)" : "low health";
+                    cleanupDeadPlant(p, cause);
                     removedCount++;
                     continue; // Skip remaining operations for this plant
                 }
@@ -425,10 +448,11 @@ public class Garden {
                 
                 // Apply parasite damage - check if plant dies immediately
                 if (!p.getParasites().isEmpty()) infestedCount++;
+                String parasitesList = p.getParasites().isEmpty() ? "unknown parasites" : String.join(", ", p.getParasites());
                 p.dailyParasiteDamage();
                 if (p.isDead()) {
                     iterator.remove();
-                    cleanupDeadPlant(p);
+                    cleanupDeadPlant(p, "parasite infestation (" + parasitesList + ")");
                     removedCount++;
                     continue; // Skip remaining operations for this plant
                 }
@@ -437,11 +461,20 @@ public class Garden {
                 p.setTemperature(lastTemperatureF);
                 if (p.isDead()) {
                     iterator.remove();
-                    cleanupDeadPlant(p);
+                    cleanupDeadPlant(p, "temperature stress (current temp: " + lastTemperatureF + "°F)");
                     removedCount++;
                     continue; // Skip remaining operations for this plant
                 }
                 if (p.getTemperatureStress() > TEMPERATURE_STRESS_THRESHOLD) stressedCount++;
+                
+                // Apply health recovery when conditions are favorable
+                int healthBefore = p.getHealth();
+                p.recoverHealth();
+                int healthAfter = p.getHealth();
+                if (healthAfter > healthBefore && healthAfter >= 50) {
+                    // Only log recovery if health improved and is at least 50% (to avoid spam for very low health plants)
+                    Logger.log(Logger.LogLevel.INFO, "Plant " + p.getName() + " health improved: " + healthBefore + "% -> " + healthAfter + "% (good conditions)");
+                }
             } catch (Throwable t) {
                 Logger.log(Logger.LogLevel.ERROR, "dayTick plant error for " + p.getName() + ": " + t.getMessage());
             }
@@ -455,6 +488,12 @@ public class Garden {
                  "Infested: " + infestedCount + " | " +
                  "Temp stressed: " + stressedCount + " | " +
                  "Newly dead: " + newlyDead + " (removed immediately: " + removedCount + ")");
+        
+        // Publish DAY_TICK_COMPLETE event so modules can run after moisture decay
+        bus.publish(EventBus.Topic.DAY_TICK_COMPLETE, null);
+        
+        // Report garden state at end of each day tick (as per API requirement)
+        reportState();
     }
     
     /**
@@ -466,8 +505,6 @@ public class Garden {
         if (plants.isEmpty()) {
             return; // No plants to attack
         }
-        
-        Random random = new Random();
         
         if (random.nextDouble() >= RANDOM_PARASITE_ATTACK_CHANCE) {
             return; // No attack this time
@@ -510,22 +547,37 @@ public class Garden {
         Logger.log(Logger.LogLevel.INFO, "Temperature set to " + f + "F");
     }
 
+    /**
+     * Triggers a parasite infestation based on each plant's vulnerabilities.
+     * Only plants that are vulnerable to the specified parasite (as defined in getPlants())
+     * will be infected.
+     * 
+     * @param name The parasite name to introduce
+     */
     public void onParasite(String name) {
         if (name == null || name.trim().isEmpty()) {
             Logger.log(Logger.LogLevel.WARNING, "onParasite: Invalid parasite name");
             return;
         }
         int infested = 0;
+        int vulnerable = 0;
         for (Plant p : plants) {
-            try { 
-                boolean wasInfested = !p.getParasites().isEmpty();
-                p.infest(name);
-                if (!p.getParasites().isEmpty() && !wasInfested) infested++;
+            try {
+                // Check if this plant's species is vulnerable to this parasite
+                List<String> vulnerabilities = p.getSpecies().getParasiteVulns();
+                if (vulnerabilities.contains(name)) {
+                    vulnerable++;
+                    boolean wasInfested = !p.getParasites().isEmpty();
+                    p.infest(name);
+                    if (!p.getParasites().isEmpty() && !wasInfested) {
+                        infested++;
+                    }
+                }
             } catch (Throwable t) { 
                 Logger.log(Logger.LogLevel.ERROR, "parasite error for " + p.getName() + ": " + t.getMessage()); 
             }
         }
-        Logger.log(Logger.LogLevel.INFO, "Parasite introduced: " + name + " (affected " + infested + " plants)");
+        Logger.log(Logger.LogLevel.INFO, "Parasite " + name + " introduced: " + infested + " of " + vulnerable + " vulnerable plants affected");
     }
     
     /**
@@ -563,18 +615,35 @@ public class Garden {
         plant.infest(parasiteName);
         boolean isNowInfested = !plant.getParasites().isEmpty();
         
-        if (isNowInfested && !wasInfested) {
-            Logger.log(Logger.LogLevel.INFO, "Parasite " + parasiteName + " introduced to plant " + plantName);
-        } else if (isNowInfested) {
-            Logger.log(Logger.LogLevel.INFO, "Parasite " + parasiteName + " added to plant " + plantName + " (already had other parasites)");
+        // Only log parasite introduction for user-planted plants (not config plants)
+        if (!isConfigPlant(plantName)) {
+            if (isNowInfested && !wasInfested) {
+                Logger.log(Logger.LogLevel.INFO, "Parasite " + parasiteName + " introduced to plant " + plantName);
+            } else if (isNowInfested) {
+                Logger.log(Logger.LogLevel.INFO, "Parasite " + parasiteName + " added to plant " + plantName + " (already had other parasites)");
+            }
         }
         
         return true;
     }
 
+    /**
+     * Logs details about the garden's current state, including which plants are alive,
+     * which have died, and any other relevant data.
+     * Called by getState() API method after 24 simulated days.
+     */
     public void reportState() {
-        long alive = plants.stream().filter(p -> !p.isDead()).count();
-        long dead = plants.size() - alive;
+        List<String> alivePlants = plants.stream()
+            .filter(p -> !p.isDead())
+            .map(Plant::getName)
+            .sorted()
+            .toList();
+        
+        // Note: Dead plants are removed immediately, so we track them via count
+        // We could maintain a history, but for now we report current state
+        long alive = alivePlants.size();
+        long dead = plants.stream().filter(Plant::isDead).count();
+        
         double avgHealth = plants.stream()
             .filter(p -> !p.isDead())
             .mapToInt(Plant::getHealth)
@@ -589,10 +658,23 @@ public class Garden {
             .filter(p -> !p.isDead() && !p.getParasites().isEmpty())
             .count();
         
-        Logger.log(Logger.LogLevel.INFO, "REPORT: alive=" + alive + " dead=" + dead + 
-                 " | avgHealth=" + String.format("%.1f", avgHealth) + 
-                 "% | avgMoisture=" + String.format("%.1f", avgMoisture) + 
-                 "% | infested=" + infested + 
-                 " | temp=" + lastTemperatureF + "F");
+        List<String> infestedPlants = plants.stream()
+            .filter(p -> !p.isDead() && !p.getParasites().isEmpty())
+            .map(p -> p.getName() + " (" + String.join(", ", p.getParasites()) + ")")
+            .sorted()
+            .toList();
+        
+        // Log detailed state report
+        Logger.log(Logger.LogLevel.INFO, "=== GARDEN STATE REPORT ===");
+        Logger.log(Logger.LogLevel.INFO, "Alive plants (" + alive + "): " + 
+                 (alivePlants.isEmpty() ? "None" : String.join(", ", alivePlants)));
+        Logger.log(Logger.LogLevel.INFO, "Dead plants: " + dead + " (removed from garden)");
+        Logger.log(Logger.LogLevel.INFO, "Average health: " + String.format("%.1f", avgHealth) + "%");
+        Logger.log(Logger.LogLevel.INFO, "Average moisture: " + String.format("%.1f", avgMoisture) + "%");
+        Logger.log(Logger.LogLevel.INFO, "Infested plants (" + infested + "): " + 
+                 (infestedPlants.isEmpty() ? "None" : String.join(", ", infestedPlants)));
+        Logger.log(Logger.LogLevel.INFO, "Current temperature: " + lastTemperatureF + "°F");
+        Logger.log(Logger.LogLevel.INFO, "Coins: " + coins);
+        Logger.log(Logger.LogLevel.INFO, "=== END STATE REPORT ===");
     }
 }

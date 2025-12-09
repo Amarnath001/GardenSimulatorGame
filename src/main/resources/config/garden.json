@@ -1,5 +1,66 @@
 {
-  "plants": [],
+  "plants": [
+    {
+      "name": "Tomato-1",
+      "species": "Tomato",
+      "waterRequirement": 15,
+      "parasites": ["aphid", "spider_mite"]
+    },
+    {
+      "name": "Rose-1",
+      "species": "Rose",
+      "waterRequirement": 12,
+      "parasites": ["aphid", "thrips"]
+    },
+    {
+      "name": "Basil-1",
+      "species": "Basil",
+      "waterRequirement": 10,
+      "parasites": ["whitefly"]
+    },
+    {
+      "name": "Pepper-1",
+      "species": "Pepper",
+      "waterRequirement": 14,
+      "parasites": ["aphid", "spider_mite"]
+    },
+    {
+      "name": "Cucumber-1",
+      "species": "Cucumber",
+      "waterRequirement": 16,
+      "parasites": ["spider_mite", "whitefly"]
+    },
+    {
+      "name": "Lettuce-1",
+      "species": "Lettuce",
+      "waterRequirement": 8,
+      "parasites": ["aphid"]
+    },
+    {
+      "name": "Carrot-1",
+      "species": "Carrot",
+      "waterRequirement": 10,
+      "parasites": ["thrips"]
+    },
+    {
+      "name": "Strawberry-1",
+      "species": "Strawberry",
+      "waterRequirement": 13,
+      "parasites": ["aphid", "spider_mite"]
+    },
+    {
+      "name": "Sunflower-1",
+      "species": "Sunflower",
+      "waterRequirement": 11,
+      "parasites": ["aphid"]
+    },
+    {
+      "name": "Marigold-1",
+      "species": "Marigold",
+      "waterRequirement": 9,
+      "parasites": ["whitefly"]
+    }
+  ],
   "species": [
     {
       "name": "Rose",
